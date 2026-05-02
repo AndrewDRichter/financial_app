@@ -36,6 +36,6 @@ export async function createBilling(params: CreateBillingParams) {
     returnUrl: params.returnUrl,
     completionUrl: params.completionUrl,
     externalId: params.externalId,
-    methods: ['PIX', 'CARD'],
+    methods: ['CARD'],
   })
 }
