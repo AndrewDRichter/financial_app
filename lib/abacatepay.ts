@@ -26,7 +26,7 @@ export interface CreateBillingParams {
 }
 
 export async function createBilling(params: CreateBillingParams) {
-  return post('/checkouts/create', {
+  return post('/subscriptions/create', {
     items: [
       {
         id: process.env.ABACATEPAY_PRODUCT_ID,
