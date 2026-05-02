@@ -14,39 +14,53 @@ export default function BillingPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [subscribing, setSubscribing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState('')
+  const [syncMsg, setSyncMsg] = useState('')
 
-  useEffect(() => {
-    supabase
+  async function loadSubscription() {
+    const { data } = await supabase
       .from('subscriptions')
       .select('status, current_period_end')
       .maybeSingle()
-      .then(({ data }) => {
-        setSubscription(data)
-        setLoading(false)
-      })
-  }, [])
+    setSubscription(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { loadSubscription() }, [])
 
   async function handleSubscribe() {
     setSubscribing(true)
     setError('')
-
     const res = await fetch('/api/billing/subscribe', { method: 'POST' })
     const json = await res.json()
-
-    if (json.error) {
-      setError(json.error)
-      setSubscribing(false)
-      return
-    }
-
+    if (json.error) { setError(json.error); setSubscribing(false); return }
     window.location.href = json.url
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncMsg('')
+    setError('')
+
+    const res = await fetch('/api/billing/sync', { method: 'POST' })
+    const json = await res.json()
+
+    if (json.active) {
+      await loadSubscription()
+      router.push('/')
+    } else {
+      setSyncMsg(json.message ?? 'Pagamento ainda não confirmado.')
+    }
+    setSyncing(false)
   }
 
   const isActive =
     subscription?.status === 'active' &&
     subscription.current_period_end != null &&
     new Date(subscription.current_period_end) > new Date()
+
+  const isPending = subscription?.status === 'pending'
 
   if (loading) {
     return (
@@ -112,21 +126,36 @@ export default function BillingPage() {
             ))}
           </div>
 
-          <div className="px-6 pb-6">
+          <div className="px-6 pb-6 space-y-3">
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+              <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 {error}
               </p>
             )}
+
             <button
               onClick={handleSubscribe}
-              disabled={subscribing}
+              disabled={subscribing || syncing}
               className="w-full py-3 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
             >
               {subscribing ? 'Redirecionando...' : 'Assinar agora — R$ 9,90/mês'}
             </button>
-            <p className="text-gray-400 text-xs text-center mt-3">
-              Pagamento via PIX ou cartão · Cancele quando quiser
+
+            {isPending && (
+              <div className="text-center space-y-1">
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="text-sm text-gray-600 underline hover:text-gray-900 disabled:opacity-50"
+                >
+                  {syncing ? 'Verificando...' : 'Já paguei — verificar pagamento'}
+                </button>
+                {syncMsg && <p className="text-gray-500 text-xs">{syncMsg}</p>}
+              </div>
+            )}
+
+            <p className="text-gray-400 text-xs text-center">
+              Pagamento via cartão · Cancele quando quiser
             </p>
           </div>
         </div>
