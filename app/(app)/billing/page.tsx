@@ -15,6 +15,8 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [subscribing, setSubscribing] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [showBillingInput, setShowBillingInput] = useState(false)
+  const [billingId, setBillingId] = useState('')
   const [error, setError] = useState('')
   const [syncMsg, setSyncMsg] = useState('')
 
@@ -43,15 +45,26 @@ export default function BillingPage() {
     setSyncMsg('')
     setError('')
 
-    const res = await fetch('/api/billing/sync', { method: 'POST' })
+    const res = await fetch('/api/billing/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ billingId: billingId || undefined }),
+    })
     const json = await res.json()
 
     if (json.active) {
       await loadSubscription()
       router.push('/')
-    } else {
-      setSyncMsg(json.message ?? 'Pagamento ainda não confirmado.')
+      return
     }
+
+    if (json.needsBillingId) {
+      setShowBillingInput(true)
+      setSyncMsg('Informe o ID da cobrança do e-mail de confirmação do AbacatePay.')
+    } else {
+      setSyncMsg(json.message ?? 'Pagamento não confirmado.')
+    }
+
     setSyncing(false)
   }
 
@@ -59,8 +72,6 @@ export default function BillingPage() {
     subscription?.status === 'active' &&
     subscription.current_period_end != null &&
     new Date(subscription.current_period_end) > new Date()
-
-  const isPending = subscription?.status === 'pending'
 
   if (loading) {
     return (
@@ -141,18 +152,30 @@ export default function BillingPage() {
               {subscribing ? 'Redirecionando...' : 'Assinar agora — R$ 9,90/mês'}
             </button>
 
-            {isPending && (
-              <div className="text-center space-y-1">
-                <button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  className="text-sm text-gray-600 underline hover:text-gray-900 disabled:opacity-50"
-                >
-                  {syncing ? 'Verificando...' : 'Já paguei — verificar pagamento'}
-                </button>
-                {syncMsg && <p className="text-gray-500 text-xs">{syncMsg}</p>}
-              </div>
-            )}
+            {/* Section for users who already paid */}
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              {showBillingInput && (
+                <input
+                  type="text"
+                  value={billingId}
+                  onChange={(e) => setBillingId(e.target.value)}
+                  placeholder="ID da cobrança (ex: bill_abc123...)"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-gray-900"
+                />
+              )}
+
+              <button
+                onClick={handleSync}
+                disabled={syncing || (showBillingInput && !billingId.trim())}
+                className="w-full py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {syncing ? 'Verificando...' : 'Já paguei — verificar acesso'}
+              </button>
+
+              {syncMsg && (
+                <p className="text-gray-500 text-xs text-center">{syncMsg}</p>
+              )}
+            </div>
 
             <p className="text-gray-400 text-xs text-center">
               Pagamento via cartão · Cancele quando quiser
