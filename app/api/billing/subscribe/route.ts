@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createBilling } from '@/lib/abacatepay'
 
+type CookieEntry = { name: string; value: string; options: Record<string, unknown> }
+
 export async function POST(request: NextRequest) {
   const cookieStore = cookies()
   const supabase = createServerClient(
@@ -11,8 +13,8 @@ export async function POST(request: NextRequest) {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cs: { name: string; value: string; options?: object }[]) =>
-          cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options as never)),
+        setAll: (cs: CookieEntry[]) =>
+          cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
       },
     }
   )
@@ -35,7 +37,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error ?? 'Erro ao criar cobrança' }, { status: 500 })
     }
 
-    // Save pending subscription
     await supabase.from('subscriptions').upsert(
       {
         user_id: user.id,
