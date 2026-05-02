@@ -26,8 +26,6 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createBilling({
-      customerName: user.user_metadata?.full_name ?? user.email ?? 'Usuário',
-      customerEmail: user.email!,
       externalId: user.id,
       returnUrl: `${origin}/billing`,
       completionUrl: `${origin}/billing/success`,

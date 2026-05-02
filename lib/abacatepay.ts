@@ -1,4 +1,4 @@
-const BASE_URL = 'https://api.abacatepay.com/v1'
+const BASE_URL = 'https://api.abacatepay.com/v2'
 
 async function post(endpoint: string, body: object) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
@@ -10,40 +10,32 @@ async function post(endpoint: string, body: object) {
     body: JSON.stringify(body),
   })
 
+  const json = await res.json()
+
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`AbacatePay ${res.status}: ${text}`)
+    throw new Error(`AbacatePay ${res.status}: ${JSON.stringify(json)}`)
   }
 
-  return res.json()
+  return json
 }
 
 export interface CreateBillingParams {
   returnUrl: string
   completionUrl: string
-  customerName: string
-  customerEmail: string
   externalId: string
 }
 
 export async function createBilling(params: CreateBillingParams) {
-  return post('/billing/createOne', {
-    frequency: 'MONTHLY',
-    methods: ['PIX', 'CREDIT_CARD'],
-    products: [
+  return post('/checkouts/create', {
+    items: [
       {
-        externalId: process.env.ABACATEPAY_PRODUCT_ID,
-        name: 'FinanceApp Pro — Mensal',
+        id: process.env.ABACATEPAY_PRODUCT_ID,
         quantity: 1,
-        price: Number(process.env.ABACATEPAY_PRICE_CENTS ?? 990),
       },
     ],
-    customer: {
-      name: params.customerName,
-      email: params.customerEmail,
-    },
     returnUrl: params.returnUrl,
     completionUrl: params.completionUrl,
     externalId: params.externalId,
+    methods: ['PIX', 'CARD'],
   })
 }
